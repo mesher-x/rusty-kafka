@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Result as JsonResult;
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
+#[serde(untagged)]
 pub enum Message {
     InitMessage(InitMessage),
     RegularMessage(RegularMessage),
@@ -24,7 +24,7 @@ impl Message {
         serde_json::to_string(self)
     }
 
-    pub fn from_json(json: &str) -> JsonResult<Self> {
-        serde_json::from_str(json)
+    pub fn from_json(json: &String) -> JsonResult<Self> {
+        serde_json::from_str::<Self>(json)
     }
 }

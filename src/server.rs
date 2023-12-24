@@ -1,48 +1,59 @@
-use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
 use crate::client_handler::ClientHandler;
 use crate::error::KafkaError;
+use crate::topic::TopicManager;
+use std::io::Error;
+use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 pub struct Server {
     listener: TcpListener,
-    running: Arc<AtomicBool>,
+    topic_manager: Arc<Mutex<TopicManager>>,
 }
 
 impl Server {
-    pub fn new(addr: &str, running: Arc<AtomicBool>) -> std::io::Result<Self> {
+    pub fn new(addr: &str) -> std::io::Result<Self> {
+        let topic_manager = Arc::new(Mutex::new(TopicManager::new()));
         let listener = TcpListener::bind(addr)?;
-        Ok(Server { listener, running })
+        //let client_handlers = Vec::new();
+        Ok(Server {
+            listener,
+            topic_manager,
+            //client_handlers,
+        })
     }
 
-    pub fn run(&self) -> std::io::Result<()> {
-        while self.running.load(Ordering::SeqCst) {
+    pub fn run(&self) -> Result<(), Error> {
+        loop {
             match self.listener.accept() {
                 Ok((stream, _addr)) => {
-                    self.handle_connection(stream)?;
+                    let topic_manager = Arc::clone(&self.topic_manager);
+
+                    thread::spawn(move || {
+                        let mut client_handler = ClientHandler::new(
+                            stream,
+                            topic_manager, // Use the cloned Arc
+                            String::from(""),
+                        );
+
+                        // Handle the client connection
+                        let _ = client_handler.handle();
+                    });
+                    // thread::spawn(move || {
+                    //     let mut client_handler = ClientHandler::new(
+                    //         stream,
+                    //         Arc::clone(&self.topic_manager),
+                    //         String::from(""),
+                    //     );
+
+                    //     client_handler.handle();
+                    // });
                 }
                 Err(e) => {
-                    if !self.running.load(Ordering::SeqCst) {
-                        break;
-                    }
-                    eprintln!("Failed to accept connection: {}", e);
+                    eprintln!("Error accepting connection: {}", e);
                 }
             }
         }
-
-        Ok(())
-    }
-
-    fn handle_connection(&self, stream: TcpStream) -> std::io::Result<()> {
-        println!("before handle");
-        let mut handler = ClientHandler::new(stream);
-        let r = handler.handle();
-        if r.is_err() {
-            println!("oups");
-        }
-
-        println!("Connection established");
         Ok(())
     }
 }

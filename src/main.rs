@@ -1,17 +1,10 @@
 use clap::Parser;
-use ctrlc;
-use std::io::Read;
-use std::net::{TcpListener, TcpStream};
-use std::str;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 
-mod server;
 mod client_handler;
-mod topic;
-mod message;
 mod error;
+mod message;
+mod server;
+mod topic;
 
 use crate::server::Server;
 
@@ -28,15 +21,7 @@ fn main() {
 
     let server_address = format!("{}:{}", args.address, args.port);
 
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
-
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    match Server::new(&server_address, running) {
+    match Server::new(&server_address) {
         Ok(server) => {
             println!("Start kafka server on address {}", server_address);
             if let Err(e) = server.run() {

@@ -5,15 +5,11 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug Rust Kafka Server",
-      "cargo": {
-        "args": ["build"],
-        "filter": {
-          "name": "my_server",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
+      "program": "${workspaceRoot}/target/debug/rusty-kafka",
+      "args": ["--address", "127.0.0.1", "--port", "55555"],
+      "cwd": "${workspaceRoot}",
+      "preLaunchTask": "cargo build",
+      "sourceLanguages": ["rust"]
     }
   ]
 }
